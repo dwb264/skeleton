@@ -1,9 +1,12 @@
 package controllers;
 
 import api.CreateReceiptRequest;
+import api.CreateTagRequest;
 import api.ReceiptResponse;
+import api.TagResponse;
 import dao.ReceiptDao;
 import generated.tables.records.ReceiptsRecord;
+import generated.tables.records.TagsRecord;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -11,6 +14,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.List;
 
+import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.toList;
 
 @Path("/receipts")
@@ -32,5 +36,11 @@ public class ReceiptController {
     public List<ReceiptResponse> getReceipts() {
         List<ReceiptsRecord> receiptRecords = receipts.getAllReceipts();
         return receiptRecords.stream().map(ReceiptResponse::new).collect(toList());
+    }
+
+    @GET
+    @Path("/dwb264")
+    public String getNetId() {
+        return "dwb264";
     }
 }
