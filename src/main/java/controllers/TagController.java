@@ -1,6 +1,5 @@
 package controllers;
 
-import api.CreateTagRequest;
 import api.ReceiptResponse;
 import api.TagResponse;
 import dao.TagDao;
@@ -23,16 +22,10 @@ public class TagController {
         this.tags = tags;
     }
 
-    @GET /* for testing purposes */
-    public List<TagResponse> getTags() {
-        List<TagsRecord> tagRecords = tags.getAllTags();
-        return tagRecords.stream().map(TagResponse::new).collect(toList());
-    }
-
     @PUT
     @Path("/{tag}")
-    public void toggleTag(@PathParam("tag") String tagName, CreateTagRequest tag) {
-        tags.put(tagName, tag.receiptId);
+    public void toggleTag(@PathParam("tag") String tagName, Integer receiptId) {
+        tags.put(tagName, receiptId);
     }
 
     @GET

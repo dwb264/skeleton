@@ -19,13 +19,6 @@ public class TagDao {
         this.dsl = DSL.using(jooqConfig);
     }
 
-
-    // see all tags for debugging purposes
-    public List<TagsRecord> getAllTags() {
-        return dsl.selectFrom(TAGS).fetch();
-    }
-
-
     public void put(String tagName, Integer receiptId) {
 
         TagsRecord tagsRecord = dsl.selectFrom(TAGS)
