@@ -2,7 +2,6 @@
 <html>
 
 <head>
-    <link rel="stylesheet" type="text/css" href="/style.css" />
     <script data-require="jquery@*" data-semver="3.1.1" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
 
@@ -42,6 +41,7 @@
             background-color: #b3d4fc;
             overflow: hidden;
             margin-top: 10px;
+            min-height: 80vh;
         }
 
         .receipt {
@@ -182,32 +182,25 @@
             var receipts;
             var tags;
 
+            // Get tags and receipts sequentially
+            // (doesn't work to do them at the same time)
             $.ajax({
-
                 url: api + "/receipts",
                 method: "GET"
-
             }).done(function (result) {
-
                 receipts = result;
-
                 $.ajax({
-
                     url: api + "/tags",
                     method: "GET"
-
                 }).done(function (result) {
-
                     tags = result;
-
                     for (var i = 0; i < receipts.length; i++) {
                         var receipt = receipts[i];
                         appendReceipt(receipt);
                     }
-
                     for (var i = 0; i < tags.length; i++) {
                         var tagSpan = $("#" + tags[i].receiptId + " .tags");
-                        tagSpan.append("<span class='tag'>" + tags[i].tag + "<span class='delete-tag'>x</span></span>");
+                        tagSpan.append("<span class='tag'>" + tags[i].tag + "</span>");
                     }
                 })
             });
@@ -235,6 +228,8 @@
                     contentType: "application/json"
                 }).done(function (id) {
                     $("#add-receipt-dialogue").hide();
+                    $("#merchant").val("");
+                    $("#amount").val("");
 
                     var html = "<div class='receipt' id='" + id + "'>";
                     html += "<span class='date'>" + new Date().toDateString() + "</span>";
@@ -248,11 +243,17 @@
 
             });
 
+            // Add tag input field on click
             $(document).on("click", ".add-tag", function () {
-                $(this).parent().parent().append("<input type='text' class='tag_input' placeholder='New tag' />");
+                var receipt = $(this).parent().parent();
+                if (!(receipt.children("input").length)) {
+                    receipt.append("<input type='text' class='tag_input' placeholder='New tag' />");
+                } else {
+                    receipt.children("input").remove();
+                }
             });
 
-
+            // PUT tag to database when enter is pressed
             $(document).on("keypress", ".tag_input", function (e) {
                 if (e.which == 13) {
                     var receiptId = parseInt($(this).parent().attr("id"));
@@ -266,13 +267,31 @@
                         contentType: "application/json",
                         success: function() {
                             var receipt = $("#" + receiptId);
-                            receipt.children(".tags").append("<span class='tag'>" + tag + "<span class='delete-tag'>x</span></span>");
+                            receipt.children(".tags").append("<span class='tag'>" + tag + "</span>");
                         }
 
                     });
 
                     $(this).remove();
                 }
+            });
+
+            // PUT to remove tag when clicked
+            $(document).on("click", ".tag", function() {
+                var tag = $(this)[0].innerHTML;
+                var receiptId = $(this).parent().parent().attr("id");
+
+                $.ajax({
+
+                    url: api + "/tags/" + tag,
+                    data: JSON.stringify(receiptId),
+                    method: "PUT",
+                    contentType: "application/json"
+
+                });
+
+                $(this).remove();
+
             });
 
         });
