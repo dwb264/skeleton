@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import generated.tables.records.ReceiptsRecord;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Time;
+import java.sql.Timestamp;
 
 /**
  * This is an API Object.  Its purpose is to model the JSON API that we expose.
@@ -26,7 +28,7 @@ public class ReceiptResponse {
     BigDecimal value;
 
     @JsonProperty
-    Time created;
+    Date created;
 
     public ReceiptResponse(ReceiptsRecord dbRecord) {
         this.merchantName = dbRecord.getMerchant();

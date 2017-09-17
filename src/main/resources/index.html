@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+    <script data-require="jquery@*" data-semver="3.1.1" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: "Source Sans Pro", sans-serif;
+            margin: 0;
+        }
+
+        #container {
+            max-width: 900px;
+            margin: 0 auto;
+            width: 60%;
+            padding-top: 20px;
+            min-width: 400px;
+        }
+
+        #add-receipt {
+            float: right;
+            padding: 5px;
+            width: 100px;
+            text-align: center;
+            font-size: 2em;
+            background-color: orange;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        h1 {
+            float:left;
+            margin: 0;
+        }
+
+        #receiptList {
+            clear: both;
+            background-color: #b3d4fc;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .receipt {
+            width: 100%;
+            overflow: hidden;
+            border-bottom: 1px solid #666;
+        }
+
+        span {
+            width: 25%;
+            position: relative;
+            float: left;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+
+        #add-receipt-dialogue {
+            position: absolute;
+            right: 0;
+            margin-right: 20%;
+            background-color: orange;
+            padding: 10px;
+            z-index: 99999;
+            margin-top: 47px;
+            display: none;
+        }
+
+        #add-receipt-dialogue input {
+            display:block;
+            padding: 10px;
+            width: 200px;
+            margin: 10px;
+            font-size: 16px;
+            font-family: "Source Sans Pro", sans-serif;
+        }
+
+        #save-receipt, #cancel-receipt {
+            padding: 10px;
+            margin: 5px 5px 10px 10px;
+            display: inline-block;
+            border-radius: 4px;
+            width: 50px;
+            text-align: center;
+        }
+
+        #save-receipt {
+            background-color: green;
+            color: #fff;
+        }
+
+        #cancel-receipt {
+            background-color: darkred;
+            color: #fff;
+        }
+
+        #headers {
+            font-weight: bold;
+        }
+
+        .tag {
+            min-width: 40px;
+            width: auto;
+            margin-right: 5px;
+            background-color: beige;
+            overflow: hidden;
+            display: inline-block;
+            float: none;
+            padding: 4px;
+            border-radius: 4px;
+            text-align: left;
+        }
+
+        .add-tag {
+            min-width: 40px;
+            width: auto;
+            margin-right: 5px;
+            background-color: cadetblue;
+            color: #fff;
+            overflow: hidden;
+            display: inline-block;
+            float: none;
+            padding: 4px;
+            border-radius: 4px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .delete-tag {
+            float: right;
+            display: inline-block;
+            padding: 0;
+            border-radius: 20px;
+            width: 18px;
+            font-size: 14px;
+            background-color: saddlebrown;
+            color: beige;
+            cursor: pointer;
+            margin-left: 10px
+        }
+
+        .delete-tag:hover {
+            background-color: darkred;
+        }
+
+        .tag_input {
+            width: 20%;
+            padding: 10px;
+            float: right;
+            font-size: 16px;
+            border: none;
+        }
+
+    </style>
+    <script>
+
+        function appendReceipt(receipt) {
+            var html = "<div class='receipt' id='" + receipt.id + "'>";
+            html += "<span class='date'>" + UTCToDateString(receipt.created) + "</span>";
+            html += "<span class='merchant'>" + receipt.merchantName + "</span>";
+            html += "<span class='amount'>" + receipt.value + "</span>";
+            html += "<span class='tags'><span class='add-tag'>Add +</span></span>";
+            html += "</div>";
+
+            $("#receiptList").append(html);
+        }
+
+        function UTCToDateString(msec) {
+            var d = new Date(0);
+            d.setUTCMilliseconds(msec);
+            return d.toDateString();
+        }
+
+        $(document).ready(function () {
+            const api = ""; // <- do not need a root api URL if this page is served directly by the API
+
+            // Populate list with existing receipts
+            var receipts;
+            var tags;
+
+            $.ajax({
+
+                url: api + "/receipts",
+                method: "GET"
+
+            }).done(function (result) {
+
+                receipts = result;
+
+                $.ajax({
+
+                    url: api + "/tags",
+                    method: "GET"
+
+                }).done(function (result) {
+
+                    tags = result;
+
+                    for (var i = 0; i < receipts.length; i++) {
+                        var receipt = receipts[i];
+                        appendReceipt(receipt);
+                    }
+
+                    for (var i = 0; i < tags.length; i++) {
+                        var tagSpan = $("#" + tags[i].receiptId + " .tags");
+                        tagSpan.append("<span class='tag'>" + tags[i].tag + "<span class='delete-tag'>x</span></span>");
+                    }
+                })
+            });
+
+            $("#add-receipt").on("click", function () {
+                $("#add-receipt-dialogue").toggle();
+            });
+
+            // Hide dialogue and clear without saving
+            $("#cancel-receipt").on("click", function () {
+                $("#merchant").val("");
+                $("#amount").val("");
+                $("#add-receipt-dialogue").hide();
+            });
+
+            // POST a receipt to the database
+            $("#save-receipt").on("click", function () {
+                var merchant = $("#merchant").val().trim();
+                var amount = $("#amount").val().trim();
+
+                $.ajax({
+                    method: "POST",
+                    url: api + "/receipts",
+                    data: JSON.stringify({"merchant": merchant, "amount": amount}),
+                    contentType: "application/json"
+                }).done(function (id) {
+                    $("#add-receipt-dialogue").hide();
+
+                    var html = "<div class='receipt' id='" + id + "'>";
+                    html += "<span class='date'>" + new Date().toDateString() + "</span>";
+                    html += "<span class='merchant'>" + merchant + "</span>";
+                    html += "<span class='amount'>" + amount + "</span>";
+                    html += "<span class='tags'><span class='add-tag'>Add +</span></span>";
+                    html += "</div>";
+
+                    $("#receiptList").append(html);
+                })
+
+            });
+
+            $(document).on("click", ".add-tag", function () {
+                $(this).parent().parent().append("<input type='text' class='tag_input' placeholder='New tag' />");
+            });
+
+
+            $(document).on("keypress", ".tag_input", function (e) {
+                if (e.which == 13) {
+                    var receiptId = parseInt($(this).parent().attr("id"));
+                    var tag = $(this).val().trim();
+
+                    $.ajax({
+
+                        url: api + "/tags/" + tag,
+                        data: JSON.stringify(receiptId),
+                        method: "PUT",
+                        contentType: "application/json",
+                        success: function() {
+                            var receipt = $("#" + receiptId);
+                            receipt.children(".tags").append("<span class='tag'>" + tag + "<span class='delete-tag'>x</span></span>");
+                        }
+
+                    });
+
+                    $(this).remove();
+                }
+            });
+
+        });
+
+
+
+    </script>
+</head>
+
+<body>
+<DIV id="container">
+
+        <h1>My Receipts</h1>
+        <div id="add-receipt">+</div>
+
+        <div id="add-receipt-dialogue">
+            <input type="text" id="merchant" placeholder="Merchant" />
+            <input type="text" id="amount" placeholder="00.00" />
+            <div id="save-receipt">Save</div>
+            <div id="cancel-receipt">Cancel</div>
+        </div>
+
+        <div id="receiptList">
+            <div class="receipt" id="headers">
+                <span class="date">Date</span>
+                <span class="merchant">Merchant</span>
+                <span class="amount">Amount</span>
+                <span class="tags">Tags</span>
+            </div>
+        </div>
+
+</DIV>
+</body>
+
+</html>

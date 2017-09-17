@@ -61,4 +61,9 @@ public class TagDao {
         // Get all receipts from receipt table with those ids
         return dsl.selectFrom(RECEIPTS).where(RECEIPTS.ID.in(receiptIds)).fetch();
     }
+
+
+    public List<TagsRecord> getAllTags() {
+        return dsl.selectFrom(TAGS).fetch();
+    }
 }
