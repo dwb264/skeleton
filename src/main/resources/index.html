@@ -4,6 +4,7 @@
 <head>
     <script data-require="jquery@*" data-semver="3.1.1" type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+    <meta charset="UTF-8" />
 
     <style>
         body {
@@ -19,7 +20,7 @@
             min-width: 400px;
         }
 
-        #add-receipt {
+        #add-receipt, #start-camera {
             float: right;
             padding: 5px;
             width: 100px;
@@ -30,6 +31,8 @@
             color: #fff;
             cursor: pointer;
             margin-bottom: 10px;
+            height: 40px;
+            margin-left: 10px;
         }
 
         h1 {
@@ -64,27 +67,29 @@
         }
 
 
-        #add-receipt-dialogue {
-            position: absolute;
+        .dialogue {
+            position: relative;
             right: 0;
+            width: 100%
             margin-right: 20%;
             background-color: orange;
-            padding: 10px;
+            padding-top: 5px;
             z-index: 99999;
             margin-top: 47px;
             display: none;
+            text-align: center;
         }
 
-        #add-receipt-dialogue input {
+        .dialogue input {
             display:block;
             padding: 10px;
-            width: 200px;
-            margin: 10px;
+            width: 90%;
+            margin: 10px auto;
             font-size: 16px;
             font-family: "Source Sans Pro", sans-serif;
         }
 
-        #save-receipt, #cancel-receipt {
+        #save-receipt, #cancel-receipt, #take-pic, #take-pic-cancel {
             padding: 10px;
             margin: 5px 5px 10px 10px;
             display: inline-block;
@@ -93,13 +98,13 @@
             text-align: center;
         }
 
-        #save-receipt {
+        #save-receipt, #take-pic {
             background-color: green;
             color: #fff;
             cursor: pointer;
         }
 
-        #cancel-receipt {
+        #cancel-receipt, #take-pic-cancel {
             background-color: darkred;
             color: #fff;
             cursor: pointer;
@@ -145,17 +150,11 @@
         }
 
         video {
-            width: 550px;
-            height: 450px;
-            border: 1px solid black;
+            width: 90%;
         }
 
         #vidwrap {
             margin: 20px 0;
-        }
-
-        #start, #snapshot {
-            height: 3em;
         }
 
     </style>
@@ -193,6 +192,7 @@
                     canvas.height = img.height;
                     canvas.getContext('2d').drawImage(img, 0, 0);
                     const base64EncodedImageData = canvas.toDataURL('image/png').split(',')[1];
+
                     $.ajax({
                         url: "/images",
                         type: "POST",
@@ -204,15 +204,19 @@
                             $('video').after(`<div>got response: <pre>${JSON.stringify(response)}</pre></div>`);
                         })
                         .always(() => console.log('request complete'));
+
                     // For debugging, you can uncomment this to see the frame that was captured
-                    // $('BODY').append(canvas);
+                    $('BODY').append(canvas);
                 });
         }
 
         $(function () {
-            $('#start').on('click', startVideo);
+            $('#start-camera').on('click', function() {
+                startVideo();
+                $("#take-pic-dialogue").toggle();
+            });
             $('video').on('play', () => $('#snapshot').prop('disabled', false));
-            $('#snapshot').on('click', takeSnapshot);
+            $('#take-pic').on('click', takeSnapshot);
         });
 
         // --- End Image Capture --- //
@@ -366,12 +370,21 @@
 
         <h1>My Receipts</h1>
         <div id="add-receipt">+</div>
+        <div id="start-camera">📷</div>
 
-        <div id="add-receipt-dialogue">
+        <div id="add-receipt-dialogue" class="dialogue">
             <input type="text" id="merchant" placeholder="Merchant" />
             <input type="text" id="amount" placeholder="00.00" />
             <div id="save-receipt">Save</div>
             <div id="cancel-receipt">Cancel</div>
+        </div>
+
+        <div id="take-pic-dialogue" class="dialogue">
+            <div id="vidwrap">
+                <video autoplay></video>
+            </div>
+            <div id="take-pic">Snap</div>
+            <div id="take-pic-cancel">Cancel</div>
         </div>
 
         <div id="receiptList">
@@ -382,14 +395,6 @@
                 <span class="htags">Tags</span>
             </div>
         </div>
-
-    <button id="start">Start Video</button>
-    <button id="snapshot" disabled="true">Take a Snapshot!</button>
-    <br>
-
-    <div id="vidwrap">
-        <video autoplay></video>
-    </div>
 
 </DIV>
 </body>
