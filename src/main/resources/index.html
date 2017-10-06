@@ -23,7 +23,7 @@
         #add-receipt, #start-camera {
             float: right;
             padding: 5px;
-            width: 100px;
+            width: 80px;
             text-align: center;
             font-size: 2em;
             background-color: orange;
@@ -156,6 +156,10 @@
         #vidwrap {
             margin: 20px 0;
         }
+        
+        .inactive {
+            background-color: #b8b8b8 !important;
+        }
 
     </style>
     <script>
@@ -178,9 +182,15 @@
                     navigator.mediaDevices.getUserMedia({video: true})
                         .then(attachMediaStream)
                         .catch(error => {
-                            console.log('you are fooked');
+                            console.log("Couldn't start video");
                         })
                 })
+        }
+
+        // Stops the video stream
+        // imageCapture must be non-null
+        function stopVideo() {
+            imageCapture.track.stop();
         }
 
         function takeSnapshot() {
@@ -198,35 +208,35 @@
                         type: "POST",
                         data: base64EncodedImageData,
                         contentType: "text/plain",
-                        success: function() {},
-                    })
-                        .then(response => {
-                            $('video').after(`<div>got response: <pre>${JSON.stringify(response)}</pre></div>`);
-                        })
-                        .always(() => console.log('request complete'));
+                        success: function(response) {
+                            $("#take-pic-dialogue").hide();
+                            $("#add-receipt-dialogue").show();
+                            stopVideo();
 
-                    // For debugging, you can uncomment this to see the frame that was captured
-                    $('BODY').append(canvas);
+                            $("#start-camera").addClass("inactive");
+                            $("#add-receipt").removeClass("inactive");
+
+                            $("#merchant").val(response.merchantName);
+                            $("#amount").val(response.amount);
+                        },
+                    });
+
                 });
         }
 
-        $(function () {
-            $('#start-camera').on('click', function() {
-                startVideo();
-                $("#take-pic-dialogue").toggle();
-            });
-            $('video').on('play', () => $('#snapshot').prop('disabled', false));
-            $('#take-pic').on('click', takeSnapshot);
-        });
-
         // --- End Image Capture --- //
 
-
+        function formatAmount(val) {
+            if (val == "" || val == null) {
+                return "None";
+            }
+            return "$" + parseFloat(val).toFixed(2);
+        }
         function appendReceipt(receipt) {
             var html = "<div class='receipt' id='" + receipt.id + "'>";
             html += "<span class='date'>" + UTCToDateString(receipt.created) + "</span>";
             html += "<span class='merchant'>" + receipt.merchantName + "</span>";
-            html += "<span class='amount'>" + receipt.value + "</span>";
+            html += "<span class='amount'>" + formatAmount(receipt.value) + "</span>";
             html += "<span class='tags'><span class='add-tag'>Add +</span></span>";
             html += "</div>";
 
@@ -270,7 +280,17 @@
             });
 
             $("#add-receipt").on("click", function () {
+                if (imageCapture) {
+                    stopVideo();
+                }
+
+                $("#take-pic-dialogue").hide();
                 $("#add-receipt-dialogue").toggle();
+
+                if ($("#add-receipt-dialogue").attr("display") != "none" && !$("#start-camera").hasClass("inactive")) {
+                    $("#start-camera").addClass("inactive");
+                    $(this).removeClass("inactive");
+                }
             });
 
             // Hide dialogue and clear without saving
@@ -278,6 +298,7 @@
                 $("#merchant").val("");
                 $("#amount").val("");
                 $("#add-receipt-dialogue").hide();
+                $("#start-camera").removeClass("inactive");
             });
 
             // POST a receipt to the database
@@ -285,26 +306,30 @@
                 var merchant = $("#merchant").val().trim();
                 var amount = $("#amount").val().trim();
 
-                $.ajax({
-                    method: "POST",
-                    url: api + "/receipts",
-                    data: JSON.stringify({"merchant": merchant, "amount": amount}),
-                    contentType: "application/json"
-                }).done(function (id) {
-                    $("#add-receipt-dialogue").hide();
-                    $("#merchant").val("");
-                    $("#amount").val("");
+                if (merchant) {
 
-                    var html = "<div class='receipt' id='" + id + "'>";
-                    html += "<span class='date'>" + new Date().toDateString() + "</span>";
-                    html += "<span class='merchant'>" + merchant + "</span>";
-                    html += "<span class='amount'>" + amount + "</span>";
-                    html += "<span class='tags'><span class='add-tag'>Add +</span></span>";
-                    html += "</div>";
+                    $.ajax({
+                        method: "POST",
+                        url: api + "/receipts",
+                        data: JSON.stringify({"merchant": merchant, "amount": amount}),
+                        contentType: "application/json"
+                    }).done(function (id) {
+                        $("#add-receipt-dialogue").hide();
+                        $("#start-camera").removeClass("inactive");
 
-                    $("#receiptList").append(html);
-                })
+                        $("#merchant").val("");
+                        $("#amount").val("");
 
+                        var html = "<div class='receipt' id='" + id + "'>";
+                        html += "<span class='date'>" + new Date().toDateString() + "</span>";
+                        html += "<span class='merchant'>" + merchant + "</span>";
+                        html += "<span class='amount'>" + formatAmount(amount) + "</span>";
+                        html += "<span class='tags'><span class='add-tag'>Add +</span></span>";
+                        html += "</div>";
+
+                        $("#receiptList").append(html);
+                    })
+                }
             });
 
             // Add tag input field on click
@@ -324,7 +349,6 @@
                     var tag = $(this).val().trim();
 
                     $.ajax({
-
                         url: api + "/tags/" + tag,
                         data: JSON.stringify(receiptId),
                         method: "PUT",
@@ -333,7 +357,6 @@
                             var receipt = $("#" + receiptId);
                             receipt.children(".tags").append("<span class='tag tagValue'>" + tag + "</span>");
                         }
-
                     });
 
                     $(this).remove();
@@ -356,6 +379,33 @@
 
                 $(this).remove();
 
+            });
+
+            // Camera control
+            $('#start-camera').on('click', function() {
+                startVideo();
+                $("#take-pic-dialogue").toggle();
+                $("#add-receipt-dialogue").hide();
+
+                if ($(this).hasClass("inactive")) {
+                    $(this).removeClass("inactive");
+                }
+
+                if ($("#take-pic-dialogue").attr("display") != "none" && !$("#add-receipt").hasClass("inactive")) {
+                    $("#add-receipt").addClass("inactive");
+                }
+
+            });
+
+            $('video').on('play', () => $('#snapshot').prop('disabled', false));
+
+            $('#take-pic').on('click', takeSnapshot);
+
+            // Stop camera
+            $("#take-pic-cancel").on("click", function() {
+                stopVideo();
+                $("#take-pic-dialogue").hide();
+                $("#add-receipt").removeClass("inactive");
             });
 
         });

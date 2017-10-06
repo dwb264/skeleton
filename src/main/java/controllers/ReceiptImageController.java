@@ -3,9 +3,11 @@ package controllers;
 import api.ReceiptSuggestionResponse;
 import com.google.cloud.vision.v1.*;
 import com.google.protobuf.ByteString;
+
 import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.List;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -38,6 +40,7 @@ public class ReceiptImageController {
      */
     @POST
     public ReceiptSuggestionResponse parseReceipt(@NotEmpty String base64EncodedImage) throws Exception {
+
         Image img = Image.newBuilder().setContent(ByteString.copyFrom(Base64.getDecoder().decode(base64EncodedImage))).build();
         AnnotateImageRequest request = this.requestBuilder.setImage(img).build();
 
@@ -48,15 +51,36 @@ public class ReceiptImageController {
             String merchantName = null;
             BigDecimal amount = null;
 
-            // Your Algo Here!!
-            // Sort text annotations by bounding polygon.  Top-most non-decimal text is the merchant
+            // Top-most non-decimal text is the merchant
             // bottom-most decimal text is the total amount
-            for (EntityAnnotation annotation : res.getTextAnnotationsList()) {
-                out.printf("Position : %s\n", annotation.getBoundingPoly());
-                out.printf("Text: %s\n", annotation.getDescription());
+
+            // Search for the highest non-decimal
+            String desc = res.getTextAnnotations(0).getDescription();
+            String[] dlist = desc.split("\n");
+            for (String d : dlist) {
+                try {
+                    BigDecimal bd = new BigDecimal(d);
+                } catch(NumberFormatException e) {
+                    // description is NOT a bigdecimal
+                    merchantName = d;
+                    break;
+                }
             }
 
-            //TextAnnotation fullTextAnnotation = res.getFullTextAnnotation();
+            // Search for the lowest decimal
+            for (int i = dlist.length-1; i >= 0; i--) {
+                try {
+                    String s = dlist[i].replace("$", "");
+                    BigDecimal bd = new BigDecimal(s);
+                    // description is a bigdecimal
+                    amount = bd;
+                    break;
+                } catch(NumberFormatException e) {
+                    // description is NOT a bigdecimal
+                    continue;
+                }
+            }
+
             return new ReceiptSuggestionResponse(merchantName, amount);
         }
     }
