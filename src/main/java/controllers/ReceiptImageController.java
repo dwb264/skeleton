@@ -12,8 +12,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import org.hibernate.validator.constraints.NotEmpty;
 
-import static java.lang.System.out;
-
 @Path("/images")
 @Consumes(MediaType.TEXT_PLAIN)
 @Produces(MediaType.APPLICATION_JSON)
@@ -51,32 +49,37 @@ public class ReceiptImageController {
             String merchantName = null;
             BigDecimal amount = null;
 
-            // Top-most non-decimal text is the merchant
-            // bottom-most decimal text is the total amount
+            List<EntityAnnotation> annotationsList = res.getTextAnnotationsList();
 
-            // Search for the highest non-decimal
-            String desc = res.getTextAnnotations(0).getDescription();
-            String[] dlist = desc.split("\n");
-            for (String d : dlist) {
+            // Top-most non-decimal text is the merchant
+            for (EntityAnnotation annotation : annotationsList) {
+
+                if (res.getTextAnnotationsList().indexOf(annotation) == 0) continue; // ignore the 0th item
+
+                String description = annotation.getDescription();
+
                 try {
-                    BigDecimal bd = new BigDecimal(d);
-                } catch(NumberFormatException e) {
+                    BigDecimal bd = new BigDecimal(description);
+                    // Double.parseDouble(description);
+                } catch (NumberFormatException e) {
                     // description is NOT a bigdecimal
-                    merchantName = d;
+                    merchantName = description;
                     break;
                 }
             }
 
-            // Search for the lowest decimal
-            for (int i = dlist.length-1; i >= 0; i--) {
+            // bottom-most decimal text is the total amount
+            for (int i = res.getTextAnnotationsCount() - 1; i > 0; i--) {
                 try {
-                    String s = dlist[i].replace("$", "");
-                    BigDecimal bd = new BigDecimal(s);
+                    // Check if it is a BigDecimal
+                    // Remove $ sign to account for dollar amounts
+                    String desc = annotationsList.get(i).getDescription().replace("$", "");
+                    BigDecimal bd = new BigDecimal(desc);
                     // description is a bigdecimal
                     amount = bd;
                     break;
                 } catch(NumberFormatException e) {
-                    // description is NOT a bigdecimal
+                    // Not a BigDecimal
                     continue;
                 }
             }
@@ -84,4 +87,5 @@ public class ReceiptImageController {
             return new ReceiptSuggestionResponse(merchantName, amount);
         }
     }
+
 }
